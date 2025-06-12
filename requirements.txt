@@ -1,0 +1,14 @@
+langchain==0.3.25
+langchain-community==0.3.24
+langchain-core==0.3.64
+langchain-text-splitters==0.3.8
+langchain-chroma==0.2.4
+PyMuPDF==1.26.0
+beautifulsoup4==4.13.4
+requests==2.32.4
+chromadb==1.0.12
+streamlit==1.45.1
+python-dotenv==1.1.0
+sentence-transformers==4.1.0
+langchain-google-genai==2.1.5
+tqdm==4.67.1
