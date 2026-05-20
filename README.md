@@ -1,90 +1,87 @@
-# DataWranglerRag1
+# IRS RAG Chatbot
 
-A powerful RAG (Retrieval-Augmented Generation) application that processes and queries documents using advanced language models. This application allows users to upload PDFs, process web URLs, and interact with the content through an intuitive chat interface.
+> A Retrieval-Augmented Generation app that scrapes the entire **IRS Internal Revenue Manual** (~1,287 pages), embeds it into a vector database, and lets you chat with the corpus through a Streamlit interface — with inline citations and per-source summaries.
 
-## Features
+<p align="center">
+  <img src="docs/architecture.png" alt="System architecture" width="85%" />
+</p>
 
-- **Document Processing**
-  - PDF document upload and processing
-  - Web URL processing
-  - Automatic text chunking and cleaning
-  - Metadata extraction and management
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white" />
+  <img src="https://img.shields.io/badge/LangChain-0.3-1C3C3C?logo=langchain&logoColor=white" />
+  <img src="https://img.shields.io/badge/ChromaDB-vector%20store-FF6B6B" />
+  <img src="https://img.shields.io/badge/Gemini-2.0%20Flash-4285F4?logo=google&logoColor=white" />
+  <img src="https://img.shields.io/badge/Streamlit-UI-FF4B4B?logo=streamlit&logoColor=white" />
+  <img src="https://img.shields.io/badge/License-MIT-green" />
+</p>
 
-- **Vector Storage**
-  - ChromaDB integration for efficient document storage
-  - Sentence transformer embeddings for semantic search
-  - Persistent storage of processed documents
+---
 
-- **Interactive Chat Interface**
-  - Streamlit-based user interface
-  - Real-time document querying
-  - Source citation and attribution
-  - Toggle-able source summaries
+## What it does
 
-- **Admin Features**
-  - Bulk URL processing
-  - Database management
-  - API key configuration
-  - Progress tracking for batch operations
+- **Bulk-scrapes the IRS Internal Revenue Manual** end-to-end — walks the table of contents, follows every `partN/irm_*` link, and ingests them in one click.
+- **Drop-in document chat** — PDF uploads and arbitrary URLs work the same way as IRS pages.
+- **Cites its sources, then explains them** — answers come with bracketed citations (`[1]`, `[2]`…) and an optional second pass that summarizes each cited chunk in plain English.
+- **Refuses to hallucinate** — if the retrieved context doesn't contain the answer, the prompt forces a literal *"I don't have that information"* with no citations.
 
-## Prerequisites
+## Why I built it
 
-- Python 3.10+
-- Required API keys:
-  - HuggingFace Token
-  - LangSmith API Key
-  - Google API Key
+I wanted a project that exercised the full RAG stack without leaning on a hosted "chat with PDF" service. The IRS Manual was a deliberate pick: it's massive, hierarchical, full of cross-references, and the kind of document where a wrong answer with a confident citation is actively harmful — so the citation discipline and the "refuse if absent" guardrail were the parts I cared most about getting right.
 
-## Installation
+## Bulk IRS ingestion
 
-1. Clone the repository:
+<p align="center">
+  <img src="docs/irs-bulk-processing.png" alt="Bulk IRS ingestion in progress" width="85%" />
+</p>
+
+One click walks the IRS Internal Revenue Manual table of contents, follows every `partN/irm_*` link, and streams each page through the ingestion path below.
+
+## How it works
+
+**Retrieval path:** user query → `all-mpnet-base-v2` embedding → ChromaDB top-k similarity search → cited context injected into a Gemini 2.0 Flash prompt → response parsed for `[n]` citations → cited chunks re-summarized in a second LLM call (toggleable).
+
+**Ingestion path:** PDF (`PyMuPDF`, page-level with markdown tables) or URL (`WebBaseLoader`) → regex cleanup → `RecursiveCharacterTextSplitter` (1000 / 200 overlap) → embedded and persisted in ChromaDB.
+
+## Tech stack
+
+| Layer | Choice | Why |
+|---|---|---|
+| LLM | Gemini 2.0 Flash | Fast, cheap, generous free tier — good fit for a portfolio demo |
+| Embeddings | `sentence-transformers/all-mpnet-base-v2` | Strong general-purpose model, runs locally, no API cost |
+| Vector store | ChromaDB (persistent) | Zero-config local persistence; survives restarts |
+| Orchestration | LangChain | Loaders, splitters, Chroma wrapper |
+| PDF parsing | PyMuPDF | Preserves page boundaries + extracts tables as markdown |
+| Web scraping | `WebBaseLoader` + `requests` + regex | Bulk-walks the IRS sitemap |
+| UI | Streamlit | Minimal-effort UI for a single-user RAG demo |
+| Tracing | LangSmith | Optional, for inspecting retrieval / prompt behavior |
+
+## Run it locally
+
 ```bash
-git clone https://github.com/yourusername/DataWranglerRag1.git
-cd DataWranglerRag1
-```
-
-2. Install dependencies:
-```bash
+git clone https://github.com/T-Rzeznik/irs-rag-chatbot.git
+cd irs-rag-chatbot
 pip install -r requirements.txt
-```
-
-3. Set up your environment variables or configure API keys through the application interface.
-
-## Usage
-
-1. Start the application:
-```bash
 streamlit run app.py
 ```
 
-2. Configure API Keys:
-   - Open the "API Keys" expander
-   - Enter your HuggingFace, LangSmith, and Google API keys
-   - Click "Save API Keys"
+Then either:
 
-3. Process Documents:
-   - Upload PDFs through the "Upload PDF" tab
-   - Add web URLs through the "Add URL" tab
-   - Use the Admin Panel for bulk processing
+- Paste your API keys into the **API Keys** expander in the UI, **or**
+- Copy `.env.example` to `.env`, fill it in, and they'll be picked up.
 
-4. Query Documents:
-   - Use the chat interface to ask questions about your documents
-   - View source citations and summaries
-   - Toggle source summaries as needed
+**Keys you'll need:** [HuggingFace](https://huggingface.co/settings/tokens), [Google AI Studio](https://aistudio.google.com/app/apikey), and (optional) [LangSmith](https://smith.langchain.com/).
 
-## Project Structure
+## Project layout
 
-- `app.py`: Main application file containing the Streamlit interface and core functionality
-- `document_processor.py`: Document processing utilities for PDFs and web URLs
-- `chroma_db/`: Directory for persistent vector storage
-- `requirements.txt`: Project dependencies
+```
+.
+├── app.py                  # Streamlit UI + chat + retrieval orchestration
+├── document_processor.py   # PDF / URL ingestion + IRS bulk scraper
+├── requirements.txt
+├── .env.example
+└── docs/                   # Architecture diagram + screenshots
+```
 
-## Dependencies
+## License
 
-- langchain: Core RAG functionality
-- streamlit: Web interface
-- PyMuPDF: PDF processing
-- chromadb: Vector storage
-- sentence-transformers: Text embeddings
-- beautifulsoup4: Web scraping
-- Additional dependencies listed in requirements.txt
+[MIT](LICENSE) — feel free to fork it, learn from it, or rip it apart.

@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual envs
+venv/
+.venv/
+env/
+.env
+
+# IDEs
+.vscode/
+.idea/
+.claude/
+.playwright-mcp/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Streamlit / ChromaDB runtime state
+chroma_db/
+.streamlit/secrets.toml
+
+# App artifacts
+temp.pdf
+*.log
+
+# Secrets — never commit
+*.pem
+*.key
+.env.local
